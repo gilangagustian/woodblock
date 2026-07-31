@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Board from './components/Board'
 import PieceTray from './components/PieceTray'
 import PiecePreview from './components/PiecePreview'
@@ -45,6 +45,7 @@ function computeGeometry({ clientX, clientY, piece, grabFracX, grabFracY, pointe
 export default function App() {
   const { state, placePiece, clearFlash, newGame, startGame, reroll } = useGame(DEFAULT_DIFFICULTY)
   const boardRef = useRef(null)
+  const ghostElRef = useRef(null)
   const [screen, setScreen] = useState('menu') // 'menu' | 'playing'
   const [dragState, setDragState] = useState(null)
   const [confirmAction, setConfirmAction] = useState(null) // null | 'restart' | 'menu'
@@ -53,8 +54,14 @@ export default function App() {
   // Authoritative drag state, written synchronously inside each handler so a
   // pointerup that fires immediately after a pointermove (fast flicks, or
   // synthetic/automated input) never reads a stale pre-move value. React's
-  // `dragState` (updated via setDragState below) drives rendering only.
+  // `dragState` (updated via setDragState below) drives rendering only, and
+  // only gets touched when the hovered cell/validity actually changes — see
+  // handlePieceMove for why.
   const dragStateRef = useRef(null)
+  // The board's rect is cached for the duration of a drag instead of read on
+  // every pointermove: getBoundingClientRect() forces a synchronous layout
+  // flush, and the board never moves/resizes mid-drag.
+  const boardRectRef = useRef(null)
 
   useEffect(() => {
     if (!state.lastClear) return
@@ -106,6 +113,7 @@ export default function App() {
     }
 
     const boardRect = boardRef.current.getBoundingClientRect()
+    boardRectRef.current = boardRect
     const geo = computeGeometry({
       clientX: e.clientX,
       clientY: e.clientY,
@@ -135,7 +143,6 @@ export default function App() {
     const current = dragStateRef.current
     if (!current || e.pointerId !== current.pointerId) return
     e.preventDefault()
-    const boardRect = boardRef.current.getBoundingClientRect()
     const geo = computeGeometry({
       clientX: e.clientX,
       clientY: e.clientY,
@@ -143,13 +150,26 @@ export default function App() {
       grabFracX: current.grabFracX,
       grabFracY: current.grabFracY,
       pointerType: current.pointerType,
-      boardRect,
+      boardRect: boardRectRef.current,
       boardSize: state.board.length,
       board: state.board,
     })
     const next = { ...current, ...geo }
     dragStateRef.current = next
-    setDragState(next)
+
+    // Move the ghost immediately via a direct DOM write, bypassing React so
+    // tracking is as smooth as the browser can paint (transform only —
+    // no layout, just compositing).
+    if (ghostElRef.current) {
+      ghostElRef.current.style.transform = `translate3d(${geo.ghostLeft}px, ${geo.ghostTop}px, 0)`
+    }
+
+    // Only trigger a React re-render — which re-renders the board's preview
+    // highlighting — when the hovered cell or its validity actually changes,
+    // not on every pixel of movement.
+    if (geo.hoverRow !== current.hoverRow || geo.hoverCol !== current.hoverCol || geo.valid !== current.valid) {
+      setDragState(next)
+    }
   }, [state.board])
 
   const handlePieceUp = useCallback((e) => {
@@ -231,13 +251,19 @@ export default function App() {
     playReroll()
   }, [state.rerollsRemaining, state.gameOver, reroll, clearDrag])
 
-  const preview = dragState && dragState.hoverRow !== null
-    ? { row: dragState.hoverRow, col: dragState.hoverCol, cells: dragState.piece.cells, valid: dragState.valid }
-    : null
+  // Memoized so Board (wrapped in React.memo) only re-renders when the
+  // preview/flash actually change, not on every unrelated App re-render.
+  const preview = useMemo(() => (
+    dragState && dragState.hoverRow !== null
+      ? { row: dragState.hoverRow, col: dragState.hoverCol, cells: dragState.piece.cells, valid: dragState.valid }
+      : null
+  ), [dragState])
 
-  const flashCells = state.lastClear
-    ? state.lastClear.clearedCells.map((c) => ({ ...c, batchId: state.lastClear.batchId }))
-    : []
+  const flashCells = useMemo(() => (
+    state.lastClear
+      ? state.lastClear.clearedCells.map((c) => ({ ...c, batchId: state.lastClear.batchId }))
+      : []
+  ), [state.lastClear])
 
   const isNewBest = state.gameOver && state.score > 0 && state.score >= state.best
   const currentDifficulty = DIFFICULTIES[state.difficultyKey]
@@ -335,10 +361,10 @@ export default function App() {
 
       {dragState && (
         <div
+          ref={ghostElRef}
           className="drag-ghost"
           style={{
-            left: dragState.ghostLeft,
-            top: dragState.ghostTop,
+            transform: `translate3d(${dragState.ghostLeft}px, ${dragState.ghostTop}px, 0)`,
             opacity: dragState.hoverRow !== null ? (dragState.valid ? 0.95 : 0.7) : 0.85,
           }}
         >

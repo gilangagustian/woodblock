@@ -1,6 +1,6 @@
-import { forwardRef } from 'react'
+import { forwardRef, memo } from 'react'
 
-const Board = forwardRef(function Board({ board, preview, flashCells }, ref) {
+const Board = memo(forwardRef(function Board({ board, preview, flashCells }, ref) {
   const size = board.length
   const previewSet = new Map()
   if (preview) {
@@ -60,6 +60,6 @@ const Board = forwardRef(function Board({ board, preview, flashCells }, ref) {
       </div>
     </div>
   )
-})
+}))
 
 export default Board
