@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useReducer } from 'react'
 import {
-  generateThreePieces,
+  generatePlayableThreePieces,
   createStartingLayout,
   canPlace,
   placePieceOnBoard,
@@ -60,7 +60,7 @@ function reducer(state, action) {
       let slots = state.slots.slice()
       slots[slotIndex] = null
       if (slots.every((s) => s === null)) {
-        slots = generateThreePieces()
+        slots = generatePlayableThreePieces(board)
       }
 
       const score = state.score + scoreGain

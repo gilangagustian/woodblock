@@ -4,11 +4,15 @@ export const POINTS_PER_CELL = 1
 export const LINE_CLEAR_BASE = 10
 export const STREAK_BONUS_BASE = 15
 
-// Light scatter of pre-placed pieces on a fresh board, as a fraction of
-// total cells. Kept modest so a new game never feels crowded.
-const STARTING_FILL_FRACTION = 0.12
-const STARTING_MAX_PIECE_ATTEMPTS = 40
+// Scatter of pre-placed pieces on a fresh board, as a fraction of total
+// cells, so a new game doesn't start bare.
+const STARTING_FILL_FRACTION = 0.25
+const STARTING_MAX_PIECE_ATTEMPTS = 60
 const STARTING_MAX_POSITION_ATTEMPTS = 25
+
+// How many times to re-roll a single piece before giving up and handing out
+// a guaranteed-fit single cell instead.
+const PIECE_FIT_MAX_ATTEMPTS = 30
 
 let pieceCounter = 0
 function nextPieceId() {
@@ -16,12 +20,7 @@ function nextPieceId() {
   return `piece-${pieceCounter}-${Date.now().toString(36)}`
 }
 
-export function createEmptyBoard(size) {
-  return Array.from({ length: size }, () => Array(size).fill(null))
-}
-
-export function randomPiece() {
-  const shape = SHAPES[Math.floor(Math.random() * SHAPES.length)]
+function buildPiece(shape) {
   const color = COLORS[Math.floor(Math.random() * COLORS.length)]
   const { width, height } = shapeDims(shape.cells)
   return {
@@ -34,16 +33,42 @@ export function randomPiece() {
   }
 }
 
-export function generateThreePieces() {
-  return [randomPiece(), randomPiece(), randomPiece()]
+const SINGLE_SHAPE = SHAPES.find((s) => s.id === 'single')
+
+export function createEmptyBoard(size) {
+  return Array.from({ length: size }, () => Array(size).fill(null))
+}
+
+export function randomPiece() {
+  const shape = SHAPES[Math.floor(Math.random() * SHAPES.length)]
+  return buildPiece(shape)
+}
+
+// A random piece guaranteed to have somewhere to go on `board` right now.
+// Re-rolls a handful of times, then falls back to a single cell — which
+// fits as long as the board isn't completely full, so this only fails to
+// guarantee a fit in a state that would already be game-over anyway.
+export function generatePlayablePiece(board) {
+  let piece = randomPiece()
+  let attempts = 0
+  while (attempts < PIECE_FIT_MAX_ATTEMPTS && !canPieceFitAnywhere(board, piece.cells)) {
+    piece = randomPiece()
+    attempts += 1
+  }
+  if (!canPieceFitAnywhere(board, piece.cells)) {
+    piece = buildPiece(SINGLE_SHAPE)
+  }
+  return piece
+}
+
+export function generatePlayableThreePieces(board) {
+  return [generatePlayablePiece(board), generatePlayablePiece(board), generatePlayablePiece(board)]
 }
 
 // Scatters a handful of random pieces onto an otherwise empty board, for a
 // less bare starting position. Never leaves a full row/column behind (that
 // would read as a pre-cleared line, which makes no sense before the player
-// has moved), but otherwise does not guarantee anything about the result —
-// callers that need a guaranteed-playable start should verify the intended
-// starting pieces still fit and regenerate if not (see useGame.js).
+// has moved).
 export function generateStartingBoard(size) {
   const board = createEmptyBoard(size)
   const targetCells = Math.round(size * size * STARTING_FILL_FRACTION)
@@ -73,24 +98,11 @@ export function generateStartingBoard(size) {
   return board
 }
 
-const STARTING_LAYOUT_MAX_RETRIES = 25
-
 // A pre-filled board paired with a starting hand that's guaranteed to have
-// somewhere to go — regenerates both together if the scatter happens to box
-// out one of the three starting pieces, falling back to an empty board in
-// the (practically unreachable) case that keeps failing.
+// somewhere to go, via generatePlayableThreePieces.
 export function createStartingLayout(size) {
-  let board = generateStartingBoard(size)
-  let slots = generateThreePieces()
-  let attempts = 0
-  while (attempts < STARTING_LAYOUT_MAX_RETRIES && !slots.every((piece) => canPieceFitAnywhere(board, piece.cells))) {
-    board = generateStartingBoard(size)
-    slots = generateThreePieces()
-    attempts += 1
-  }
-  if (!slots.every((piece) => canPieceFitAnywhere(board, piece.cells))) {
-    board = createEmptyBoard(size)
-  }
+  const board = generateStartingBoard(size)
+  const slots = generatePlayableThreePieces(board)
   return { board, slots }
 }
 
