@@ -4,6 +4,7 @@ import PieceTray from './components/PieceTray'
 import PiecePreview from './components/PiecePreview'
 import ScoreBar from './components/ScoreBar'
 import GameOverModal from './components/GameOverModal'
+import ConfirmModal from './components/ConfirmModal'
 import { useGame } from './useGame'
 import { BOARD_SIZE, canPlace } from './gameLogic'
 
@@ -41,6 +42,7 @@ export default function App() {
   const { state, placePiece, clearFlash, newGame } = useGame()
   const boardRef = useRef(null)
   const [dragState, setDragState] = useState(null)
+  const [confirmingRestart, setConfirmingRestart] = useState(false)
   // Authoritative drag state, written synchronously inside each handler so a
   // pointerup that fires immediately after a pointermove (fast flicks, or
   // synthetic/automated input) never reads a stale pre-move value. React's
@@ -129,6 +131,25 @@ export default function App() {
     setDragState(null)
   }, [])
 
+  const handleRestartClick = useCallback(() => {
+    if (state.score === 0) {
+      newGame()
+      return
+    }
+    setConfirmingRestart(true)
+  }, [state.score, newGame])
+
+  const handleConfirmRestart = useCallback(() => {
+    setConfirmingRestart(false)
+    dragStateRef.current = null
+    setDragState(null)
+    newGame()
+  }, [newGame])
+
+  const handleCancelRestart = useCallback(() => {
+    setConfirmingRestart(false)
+  }, [])
+
   const preview = dragState && dragState.hoverRow !== null
     ? { row: dragState.hoverRow, col: dragState.hoverCol, cells: dragState.piece.cells, valid: dragState.valid }
     : null
@@ -142,7 +163,21 @@ export default function App() {
   return (
     <div className="app-root">
       <div className="game-shell">
-        <h1 className="game-title">Woodblock</h1>
+        <div className="game-header">
+          <h1 className="game-title">Woodblock</h1>
+          <button
+            type="button"
+            className="restart-icon-btn"
+            onClick={handleRestartClick}
+            aria-label="Restart game"
+            title="Restart game"
+          >
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M20 11A8 8 0 1 0 18.6 16.5" />
+              <path d="M20 5v6h-6" />
+            </svg>
+          </button>
+        </div>
         <ScoreBar score={state.score} best={state.best} />
         <Board ref={boardRef} board={state.board} preview={preview} flashCells={flashCells} />
         {state.lastClear && state.lastClear.numLines > 1 && (
@@ -182,6 +217,17 @@ export default function App() {
 
       {state.gameOver && (
         <GameOverModal score={state.score} best={state.best} isNewBest={isNewBest} onRestart={newGame} />
+      )}
+
+      {confirmingRestart && (
+        <ConfirmModal
+          title="Restart game?"
+          message="Your current score and board will be lost."
+          confirmLabel="Restart"
+          cancelLabel="Cancel"
+          onConfirm={handleConfirmRestart}
+          onCancel={handleCancelRestart}
+        />
       )}
     </div>
   )

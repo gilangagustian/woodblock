@@ -55,12 +55,48 @@ body {
 }
 
 .game-title {
-  margin: 4px 0 0;
+  margin: 0;
   font-size: 2rem;
   letter-spacing: 3px;
   text-transform: uppercase;
   color: #f6d9a8;
   text-shadow: 0 2px 0 rgba(0, 0, 0, 0.5), 0 0 18px rgba(246, 217, 168, 0.25);
+}
+
+.game-header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  margin-top: 4px;
+}
+
+.restart-icon-btn {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: linear-gradient(180deg, #5a3a22, #3a2410);
+  color: #f0dcb8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 3px 6px rgba(0, 0, 0, 0.35);
+  transition: transform 120ms ease, background 120ms ease;
+}
+
+.restart-icon-btn:hover {
+  background: linear-gradient(180deg, #6b4a2c, #45301a);
+}
+
+.restart-icon-btn:active {
+  transform: translateY(-50%) scale(0.92);
 }
 
 /* ---------- Score bar ---------- */
@@ -327,6 +363,49 @@ body {
 .modal-best {
   opacity: 0.75;
   margin-bottom: 20px;
+}
+
+.modal-message {
+  opacity: 0.85;
+  margin: 0 0 22px;
+  max-width: 26ch;
+  line-height: 1.4;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+.modal-btn {
+  border: none;
+  border-radius: 10px;
+  font-weight: 700;
+  font-size: 1rem;
+  padding: 12px 24px;
+  cursor: pointer;
+  transition: transform 100ms ease;
+}
+
+.modal-btn:hover {
+  transform: translateY(-1px);
+}
+
+.modal-btn:active {
+  transform: translateY(1px);
+}
+
+.modal-btn-primary {
+  background: linear-gradient(180deg, #e0983e, #b96f1f);
+  color: #2a1a0d;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.4);
+}
+
+.modal-btn-secondary {
+  background: linear-gradient(180deg, #6b5236, #4a3a26);
+  color: #f0dcb8;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 
 .restart-btn {
