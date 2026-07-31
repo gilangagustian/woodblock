@@ -4,6 +4,12 @@ export const POINTS_PER_CELL = 1
 export const LINE_CLEAR_BASE = 10
 export const STREAK_BONUS_BASE = 15
 
+// Light scatter of pre-placed pieces on a fresh board, as a fraction of
+// total cells. Kept modest so a new game never feels crowded.
+const STARTING_FILL_FRACTION = 0.12
+const STARTING_MAX_PIECE_ATTEMPTS = 40
+const STARTING_MAX_POSITION_ATTEMPTS = 25
+
 let pieceCounter = 0
 function nextPieceId() {
   pieceCounter += 1
@@ -30,6 +36,62 @@ export function randomPiece() {
 
 export function generateThreePieces() {
   return [randomPiece(), randomPiece(), randomPiece()]
+}
+
+// Scatters a handful of random pieces onto an otherwise empty board, for a
+// less bare starting position. Never leaves a full row/column behind (that
+// would read as a pre-cleared line, which makes no sense before the player
+// has moved), but otherwise does not guarantee anything about the result —
+// callers that need a guaranteed-playable start should verify the intended
+// starting pieces still fit and regenerate if not (see useGame.js).
+export function generateStartingBoard(size) {
+  const board = createEmptyBoard(size)
+  const targetCells = Math.round(size * size * STARTING_FILL_FRACTION)
+  let filled = 0
+  let pieceAttempts = 0
+
+  while (filled < targetCells && pieceAttempts < STARTING_MAX_PIECE_ATTEMPTS) {
+    pieceAttempts += 1
+    const piece = randomPiece()
+    for (let i = 0; i < STARTING_MAX_POSITION_ATTEMPTS; i++) {
+      const row = Math.floor(Math.random() * size)
+      const col = Math.floor(Math.random() * size)
+      if (canPlace(board, piece.cells, row, col)) {
+        for (const [dr, dc] of piece.cells) {
+          board[row + dr][col + dc] = piece.color
+        }
+        filled += piece.cells.length
+        break
+      }
+    }
+  }
+
+  const { rows, cols } = findFullLines(board)
+  if (rows.length || cols.length) {
+    return clearLines(board, rows, cols).board
+  }
+  return board
+}
+
+const STARTING_LAYOUT_MAX_RETRIES = 25
+
+// A pre-filled board paired with a starting hand that's guaranteed to have
+// somewhere to go — regenerates both together if the scatter happens to box
+// out one of the three starting pieces, falling back to an empty board in
+// the (practically unreachable) case that keeps failing.
+export function createStartingLayout(size) {
+  let board = generateStartingBoard(size)
+  let slots = generateThreePieces()
+  let attempts = 0
+  while (attempts < STARTING_LAYOUT_MAX_RETRIES && !slots.every((piece) => canPieceFitAnywhere(board, piece.cells))) {
+    board = generateStartingBoard(size)
+    slots = generateThreePieces()
+    attempts += 1
+  }
+  if (!slots.every((piece) => canPieceFitAnywhere(board, piece.cells))) {
+    board = createEmptyBoard(size)
+  }
+  return { board, slots }
 }
 
 export function canPlace(board, cells, row, col) {

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useReducer } from 'react'
 import {
-  createEmptyBoard,
   generateThreePieces,
+  createStartingLayout,
   canPlace,
   placePieceOnBoard,
   findFullLines,
@@ -17,10 +17,11 @@ import { loadBestScores, saveBestScore } from './storage'
 function makeInitialState(difficultyKey) {
   const size = DIFFICULTIES[difficultyKey].size
   const bestScores = loadBestScores()
+  const { board, slots } = createStartingLayout(size)
   return {
     difficultyKey,
-    board: createEmptyBoard(size),
-    slots: generateThreePieces(),
+    board,
+    slots,
     score: 0,
     best: bestScores[difficultyKey] || 0,
     streak: 0, // consecutive placements that cleared at least one line
