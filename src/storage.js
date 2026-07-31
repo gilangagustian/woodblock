@@ -1,4 +1,5 @@
 const STORAGE_KEY = 'woodblock:bestScores'
+const SOUND_KEY = 'woodblock:soundEnabled'
 
 export function loadBestScores() {
   try {
@@ -20,5 +21,22 @@ export function saveBestScore(difficultyKey, score) {
     }
   } catch {
     // localStorage unavailable (private browsing, disabled storage, etc.) — best score just won't persist.
+  }
+}
+
+export function loadSoundEnabled() {
+  try {
+    const raw = localStorage.getItem(SOUND_KEY)
+    return raw === null ? true : raw === 'true'
+  } catch {
+    return true
+  }
+}
+
+export function saveSoundEnabled(enabled) {
+  try {
+    localStorage.setItem(SOUND_KEY, String(enabled))
+  } catch {
+    // ignore
   }
 }

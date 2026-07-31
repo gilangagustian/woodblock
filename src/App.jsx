@@ -10,6 +10,7 @@ import { useGame } from './useGame'
 import { canPlace } from './gameLogic'
 import { DIFFICULTIES, DEFAULT_DIFFICULTY } from './difficulty'
 import { loadBestScores } from './storage'
+import { isSoundEnabled, setSoundEnabled, playPlace, playInvalid, playClear, playStreak, playGameOver } from './feedback'
 
 const FLASH_DURATION_MS = 500
 const TOUCH_LIFT_CELLS = 1.6
@@ -47,6 +48,8 @@ export default function App() {
   const [screen, setScreen] = useState('menu') // 'menu' | 'playing'
   const [dragState, setDragState] = useState(null)
   const [confirmAction, setConfirmAction] = useState(null) // null | 'restart' | 'menu'
+  const [soundOn, setSoundOn] = useState(() => isSoundEnabled())
+  const prevGameOverRef = useRef(false)
   // Authoritative drag state, written synchronously inside each handler so a
   // pointerup that fires immediately after a pointermove (fast flicks, or
   // synthetic/automated input) never reads a stale pre-move value. React's
@@ -59,6 +62,24 @@ export default function App() {
     const t = setTimeout(() => clearFlash(batchId), FLASH_DURATION_MS)
     return () => clearTimeout(t)
   }, [state.lastClear, clearFlash])
+
+  // Sound/haptic feedback for each placement, keyed off the reducer's
+  // one-shot lastPlacement event so it fires exactly once per placement.
+  useEffect(() => {
+    if (!state.lastPlacement) return
+    const { numLines, streak } = state.lastPlacement
+    if (numLines > 0) {
+      playClear(numLines)
+      if (streak >= 2) playStreak(streak)
+    } else {
+      playPlace()
+    }
+  }, [state.lastPlacement])
+
+  useEffect(() => {
+    if (state.gameOver && !prevGameOverRef.current) playGameOver()
+    prevGameOverRef.current = state.gameOver
+  }, [state.gameOver])
 
   // Belt-and-suspenders: block native touch scrolling for the duration of a
   // piece drag. CSS touch-action on the piece element normally covers this,
@@ -135,8 +156,12 @@ export default function App() {
     const current = dragStateRef.current
     if (!current || e.pointerId !== current.pointerId) return
     e.preventDefault()
-    if (current.hoverRow !== null && current.hoverCol !== null && current.valid) {
-      placePiece(current.slotIndex, current.hoverRow, current.hoverCol)
+    if (current.hoverRow !== null && current.hoverCol !== null) {
+      if (current.valid) {
+        placePiece(current.slotIndex, current.hoverRow, current.hoverCol)
+      } else {
+        playInvalid()
+      }
     }
     dragStateRef.current = null
     setDragState(null)
@@ -191,6 +216,14 @@ export default function App() {
     setConfirmAction(null)
   }, [])
 
+  const handleToggleSound = useCallback(() => {
+    setSoundOn((prev) => {
+      const next = !prev
+      setSoundEnabled(next)
+      return next
+    })
+  }, [])
+
   const preview = dragState && dragState.hoverRow !== null
     ? { row: dragState.hoverRow, col: dragState.hoverCol, cells: dragState.piece.cells, valid: dragState.valid }
     : null
@@ -224,7 +257,27 @@ export default function App() {
                 </button>
                 <button
                   type="button"
-                  className="restart-icon-btn"
+                  className="icon-btn"
+                  onClick={handleToggleSound}
+                  aria-label={soundOn ? 'Mute sound' : 'Unmute sound'}
+                  title={soundOn ? 'Mute sound' : 'Unmute sound'}
+                >
+                  {soundOn ? (
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M4 9v6h4l5 4V5L8 9H4z" />
+                      <path d="M17.5 8.5a5 5 0 0 1 0 7" />
+                      <path d="M20 6a8.5 8.5 0 0 1 0 12" />
+                    </svg>
+                  ) : (
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M4 9v6h4l5 4V5L8 9H4z" />
+                      <path d="M16 9l5 6M21 9l-5 6" />
+                    </svg>
+                  )}
+                </button>
+                <button
+                  type="button"
+                  className="icon-btn"
                   onClick={handleRestartClick}
                   aria-label="Restart game"
                   title="Restart game"
@@ -238,9 +291,10 @@ export default function App() {
             </div>
             <ScoreBar score={state.score} best={state.best} />
             <Board ref={boardRef} board={state.board} preview={preview} flashCells={flashCells} />
-            {state.lastClear && state.lastClear.numLines > 1 && (
-              <div key={state.lastClear.batchId} className="combo-toast">
-                {state.lastClear.numLines}x Combo!
+            {state.lastPlacement && (state.lastPlacement.numLines > 1 || state.lastPlacement.streak >= 2) && (
+              <div key={state.lastPlacement.batchId} className="combo-toast">
+                {state.lastPlacement.numLines > 1 && <div>{state.lastPlacement.numLines}x Lines!</div>}
+                {state.lastPlacement.streak >= 2 && <div>🔥 Streak ×{state.lastPlacement.streak}</div>}
               </div>
             )}
             <PieceTray

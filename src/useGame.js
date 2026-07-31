@@ -8,6 +8,7 @@ import {
   clearLines,
   isGameOver,
   computeLineClearScore,
+  computeStreakBonus,
   POINTS_PER_CELL,
 } from './gameLogic'
 import { DIFFICULTIES, DEFAULT_DIFFICULTY } from './difficulty'
@@ -22,8 +23,10 @@ function makeInitialState(difficultyKey) {
     slots: generateThreePieces(),
     score: 0,
     best: bestScores[difficultyKey] || 0,
+    streak: 0, // consecutive placements that cleared at least one line
     gameOver: false,
     lastClear: null, // { clearedCells, numLines, batchId } for flash animation, transient
+    lastPlacement: null, // { batchId, cellsPlaced, numLines, streak } — one-shot event for sound/haptics/toast
   }
 }
 
@@ -41,16 +44,16 @@ function reducer(state, action) {
 
       const { rows, cols } = findFullLines(board)
       const numLines = rows.length + cols.length
+      const batchId = `${Date.now()}-${Math.random()}`
+      const streak = numLines > 0 ? state.streak + 1 : 0
+
       let lastClear = null
       if (numLines > 0) {
         const result = clearLines(board, rows, cols)
         board = result.board
         scoreGain += computeLineClearScore(numLines)
-        lastClear = {
-          clearedCells: result.clearedCells,
-          numLines,
-          batchId: `${Date.now()}-${Math.random()}`,
-        }
+        scoreGain += computeStreakBonus(streak)
+        lastClear = { clearedCells: result.clearedCells, numLines, batchId }
       }
 
       let slots = state.slots.slice()
@@ -62,8 +65,9 @@ function reducer(state, action) {
       const score = state.score + scoreGain
       const best = Math.max(state.best, score)
       const gameOver = isGameOver(board, slots)
+      const lastPlacement = { batchId, cellsPlaced: piece.cells.length, numLines, streak }
 
-      return { ...state, board, slots, score, best, gameOver, lastClear }
+      return { ...state, board, slots, score, best, streak, gameOver, lastClear, lastPlacement }
     }
     case 'CLEAR_FLASH': {
       if (state.lastClear && state.lastClear.batchId === action.batchId) {

@@ -2,6 +2,7 @@ import { SHAPES, COLORS, shapeDims } from './shapes.js'
 
 export const POINTS_PER_CELL = 1
 export const LINE_CLEAR_BASE = 10
+export const STREAK_BONUS_BASE = 15
 
 let pieceCounter = 0
 function nextPieceId() {
@@ -120,4 +121,12 @@ export function isGameOver(board, slots) {
 export function computeLineClearScore(numLines) {
   if (numLines === 0) return 0
   return LINE_CLEAR_BASE * numLines * numLines
+}
+
+// Bonus for clearing a line on consecutive placements. `streak` counts
+// consecutive clearing placements (1 = just cleared, no streak bonus yet;
+// 2+ = back-to-back clears, bonus grows with the chain length).
+export function computeStreakBonus(streak) {
+  if (streak < 2) return 0
+  return STREAK_BONUS_BASE * (streak - 1)
 }
