@@ -1,7 +1,7 @@
 import { forwardRef } from 'react'
-import { BOARD_SIZE } from '../gameLogic'
 
 const Board = forwardRef(function Board({ board, preview, flashCells }, ref) {
+  const size = board.length
   const previewSet = new Map()
   if (preview) {
     for (const [dr, dc] of preview.cells) {
@@ -17,8 +17,8 @@ const Board = forwardRef(function Board({ board, preview, flashCells }, ref) {
   }
 
   const cells = []
-  for (let r = 0; r < BOARD_SIZE; r++) {
-    for (let c = 0; c < BOARD_SIZE; c++) {
+  for (let r = 0; r < size; r++) {
+    for (let c = 0; c < size; c++) {
       const key = `${r},${c}`
       const filled = board[r][c]
       const previewState = previewSet.get(key)
@@ -51,7 +51,11 @@ const Board = forwardRef(function Board({ board, preview, flashCells }, ref) {
 
   return (
     <div className="board-wrap">
-      <div className="board-grid" ref={ref}>
+      <div
+        className="board-grid"
+        ref={ref}
+        style={{ gridTemplateColumns: `repeat(${size}, 1fr)`, gridTemplateRows: `repeat(${size}, 1fr)` }}
+      >
         {cells}
       </div>
     </div>

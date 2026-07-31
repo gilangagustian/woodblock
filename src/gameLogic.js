@@ -1,6 +1,5 @@
 import { SHAPES, COLORS, shapeDims } from './shapes.js'
 
-export const BOARD_SIZE = 9
 export const POINTS_PER_CELL = 1
 export const LINE_CLEAR_BASE = 10
 
@@ -10,8 +9,8 @@ function nextPieceId() {
   return `piece-${pieceCounter}-${Date.now().toString(36)}`
 }
 
-export function createEmptyBoard() {
-  return Array.from({ length: BOARD_SIZE }, () => Array(BOARD_SIZE).fill(null))
+export function createEmptyBoard(size) {
+  return Array.from({ length: size }, () => Array(size).fill(null))
 }
 
 export function randomPiece() {
@@ -33,10 +32,11 @@ export function generateThreePieces() {
 }
 
 export function canPlace(board, cells, row, col) {
+  const size = board.length
   for (const [dr, dc] of cells) {
     const r = row + dr
     const c = col + dc
-    if (r < 0 || r >= BOARD_SIZE || c < 0 || c >= BOARD_SIZE) return false
+    if (r < 0 || r >= size || c < 0 || c >= size) return false
     if (board[r][c] !== null) return false
   }
   return true
@@ -51,14 +51,15 @@ export function placePieceOnBoard(board, cells, row, col, color) {
 }
 
 export function findFullLines(board) {
+  const size = board.length
   const rows = []
   const cols = []
-  for (let r = 0; r < BOARD_SIZE; r++) {
+  for (let r = 0; r < size; r++) {
     if (board[r].every((cell) => cell !== null)) rows.push(r)
   }
-  for (let c = 0; c < BOARD_SIZE; c++) {
+  for (let c = 0; c < size; c++) {
     let full = true
-    for (let r = 0; r < BOARD_SIZE; r++) {
+    for (let r = 0; r < size; r++) {
       if (board[r][c] === null) {
         full = false
         break
@@ -71,10 +72,11 @@ export function findFullLines(board) {
 
 // Returns { board: newBoard, clearedCells: [{r,c,color}] }
 export function clearLines(board, rows, cols) {
+  const size = board.length
   const clearedCellsSet = new Set()
   const clearedCells = []
   for (const r of rows) {
-    for (let c = 0; c < BOARD_SIZE; c++) {
+    for (let c = 0; c < size; c++) {
       const key = `${r},${c}`
       if (!clearedCellsSet.has(key)) {
         clearedCellsSet.add(key)
@@ -83,7 +85,7 @@ export function clearLines(board, rows, cols) {
     }
   }
   for (const c of cols) {
-    for (let r = 0; r < BOARD_SIZE; r++) {
+    for (let r = 0; r < size; r++) {
       const key = `${r},${c}`
       if (!clearedCellsSet.has(key)) {
         clearedCellsSet.add(key)
@@ -99,9 +101,10 @@ export function clearLines(board, rows, cols) {
 }
 
 export function canPieceFitAnywhere(board, cells) {
+  const size = board.length
   const { width, height } = shapeDims(cells)
-  for (let r = 0; r <= BOARD_SIZE - height; r++) {
-    for (let c = 0; c <= BOARD_SIZE - width; c++) {
+  for (let r = 0; r <= size - height; r++) {
+    for (let c = 0; c <= size - width; c++) {
       if (canPlace(board, cells, r, c)) return true
     }
   }

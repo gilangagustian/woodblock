@@ -1,4 +1,4 @@
-import { useCallback, useReducer } from 'react'
+import { useCallback, useEffect, useReducer } from 'react'
 import {
   createEmptyBoard,
   generateThreePieces,
@@ -10,13 +10,18 @@ import {
   computeLineClearScore,
   POINTS_PER_CELL,
 } from './gameLogic'
+import { DIFFICULTIES, DEFAULT_DIFFICULTY } from './difficulty'
+import { loadBestScores, saveBestScore } from './storage'
 
-function initState() {
+function makeInitialState(difficultyKey) {
+  const size = DIFFICULTIES[difficultyKey].size
+  const bestScores = loadBestScores()
   return {
-    board: createEmptyBoard(),
+    difficultyKey,
+    board: createEmptyBoard(size),
     slots: generateThreePieces(),
     score: 0,
-    best: 0,
+    best: bestScores[difficultyKey] || 0,
     gameOver: false,
     lastClear: null, // { clearedCells, numLines, batchId } for flash animation, transient
   }
@@ -67,15 +72,23 @@ function reducer(state, action) {
       return state
     }
     case 'NEW_GAME': {
-      return { ...initState(), best: state.best }
+      return makeInitialState(state.difficultyKey)
+    }
+    case 'START_GAME': {
+      return makeInitialState(action.difficultyKey)
     }
     default:
       return state
   }
 }
 
-export function useGame() {
-  const [state, dispatch] = useReducer(reducer, undefined, initState)
+export function useGame(initialDifficultyKey = DEFAULT_DIFFICULTY) {
+  const [state, dispatch] = useReducer(reducer, initialDifficultyKey, makeInitialState)
+
+  // Persist whenever this difficulty's best score improves.
+  useEffect(() => {
+    saveBestScore(state.difficultyKey, state.best)
+  }, [state.difficultyKey, state.best])
 
   const placePiece = useCallback((slotIndex, row, col) => {
     dispatch({ type: 'PLACE_PIECE', slotIndex, row, col })
@@ -89,5 +102,9 @@ export function useGame() {
     dispatch({ type: 'NEW_GAME' })
   }, [])
 
-  return { state, placePiece, clearFlash, newGame }
+  const startGame = useCallback((difficultyKey) => {
+    dispatch({ type: 'START_GAME', difficultyKey })
+  }, [])
+
+  return { state, placePiece, clearFlash, newGame, startGame }
 }

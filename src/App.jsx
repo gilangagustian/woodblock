@@ -5,14 +5,17 @@ import PiecePreview from './components/PiecePreview'
 import ScoreBar from './components/ScoreBar'
 import GameOverModal from './components/GameOverModal'
 import ConfirmModal from './components/ConfirmModal'
+import DifficultyMenu from './components/DifficultyMenu'
 import { useGame } from './useGame'
-import { BOARD_SIZE, canPlace } from './gameLogic'
+import { canPlace } from './gameLogic'
+import { DIFFICULTIES, DEFAULT_DIFFICULTY } from './difficulty'
+import { loadBestScores } from './storage'
 
 const FLASH_DURATION_MS = 500
 const TOUCH_LIFT_CELLS = 1.6
 
-function computeGeometry({ clientX, clientY, piece, grabFracX, grabFracY, pointerType, boardRect, board }) {
-  const cellSize = boardRect.width / BOARD_SIZE
+function computeGeometry({ clientX, clientY, piece, grabFracX, grabFracY, pointerType, boardRect, boardSize, board }) {
+  const cellSize = boardRect.width / boardSize
   const ghostWidth = piece.width * cellSize
   const ghostHeight = piece.height * cellSize
   let ghostLeft = clientX - grabFracX * ghostWidth
@@ -27,8 +30,8 @@ function computeGeometry({ clientX, clientY, piece, grabFracX, grabFracY, pointe
   let hoverRow = null
   let hoverCol = null
   let valid = false
-  const maxRow = BOARD_SIZE - piece.height
-  const maxCol = BOARD_SIZE - piece.width
+  const maxRow = boardSize - piece.height
+  const maxCol = boardSize - piece.width
   if (rawRow >= 0 && rawRow <= maxRow && rawCol >= 0 && rawCol <= maxCol) {
     hoverRow = rawRow
     hoverCol = rawCol
@@ -39,10 +42,11 @@ function computeGeometry({ clientX, clientY, piece, grabFracX, grabFracY, pointe
 }
 
 export default function App() {
-  const { state, placePiece, clearFlash, newGame } = useGame()
+  const { state, placePiece, clearFlash, newGame, startGame } = useGame(DEFAULT_DIFFICULTY)
   const boardRef = useRef(null)
+  const [screen, setScreen] = useState('menu') // 'menu' | 'playing'
   const [dragState, setDragState] = useState(null)
-  const [confirmingRestart, setConfirmingRestart] = useState(false)
+  const [confirmAction, setConfirmAction] = useState(null) // null | 'restart' | 'menu'
   // Authoritative drag state, written synchronously inside each handler so a
   // pointerup that fires immediately after a pointermove (fast flicks, or
   // synthetic/automated input) never reads a stale pre-move value. React's
@@ -77,6 +81,7 @@ export default function App() {
       grabFracY,
       pointerType: e.pointerType,
       boardRect,
+      boardSize: state.board.length,
       board: state.board,
     })
 
@@ -106,6 +111,7 @@ export default function App() {
       grabFracY: current.grabFracY,
       pointerType: current.pointerType,
       boardRect,
+      boardSize: state.board.length,
       board: state.board,
     })
     const next = { ...current, ...geo }
@@ -131,23 +137,46 @@ export default function App() {
     setDragState(null)
   }, [])
 
+  const clearDrag = useCallback(() => {
+    dragStateRef.current = null
+    setDragState(null)
+  }, [])
+
+  const handleSelectDifficulty = useCallback((difficultyKey) => {
+    startGame(difficultyKey)
+    setScreen('playing')
+  }, [startGame])
+
   const handleRestartClick = useCallback(() => {
     if (state.score === 0) {
       newGame()
       return
     }
-    setConfirmingRestart(true)
+    setConfirmAction('restart')
   }, [state.score, newGame])
 
-  const handleConfirmRestart = useCallback(() => {
-    setConfirmingRestart(false)
-    dragStateRef.current = null
-    setDragState(null)
-    newGame()
-  }, [newGame])
+  const handleChangeDifficultyClick = useCallback(() => {
+    if (state.score === 0) {
+      setScreen('menu')
+      return
+    }
+    setConfirmAction('menu')
+  }, [state.score])
 
-  const handleCancelRestart = useCallback(() => {
-    setConfirmingRestart(false)
+  const handleGameOverChangeDifficulty = useCallback(() => {
+    clearDrag()
+    setScreen('menu')
+  }, [clearDrag])
+
+  const handleConfirmAction = useCallback(() => {
+    clearDrag()
+    if (confirmAction === 'restart') newGame()
+    else if (confirmAction === 'menu') setScreen('menu')
+    setConfirmAction(null)
+  }, [confirmAction, newGame, clearDrag])
+
+  const handleCancelAction = useCallback(() => {
+    setConfirmAction(null)
   }, [])
 
   const preview = dragState && dragState.hoverRow !== null
@@ -159,40 +188,59 @@ export default function App() {
     : []
 
   const isNewBest = state.gameOver && state.score > 0 && state.score >= state.best
+  const currentDifficulty = DIFFICULTIES[state.difficultyKey]
 
   return (
     <div className="app-root">
       <div className="game-shell">
-        <div className="game-header">
-          <h1 className="game-title">Woodblock</h1>
-          <button
-            type="button"
-            className="restart-icon-btn"
-            onClick={handleRestartClick}
-            aria-label="Restart game"
-            title="Restart game"
-          >
-            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M20 11A8 8 0 1 0 18.6 16.5" />
-              <path d="M20 5v6h-6" />
-            </svg>
-          </button>
-        </div>
-        <ScoreBar score={state.score} best={state.best} />
-        <Board ref={boardRef} board={state.board} preview={preview} flashCells={flashCells} />
-        {state.lastClear && state.lastClear.numLines > 1 && (
-          <div key={state.lastClear.batchId} className="combo-toast">
-            {state.lastClear.numLines}x Combo!
-          </div>
+        {screen === 'menu' && (
+          <DifficultyMenu bestScores={loadBestScores()} onSelect={handleSelectDifficulty} />
         )}
-        <PieceTray
-          slots={state.slots}
-          draggingSlotIndex={dragState ? dragState.slotIndex : null}
-          onPieceDown={handlePieceDown}
-          onPieceMove={handlePieceMove}
-          onPieceUp={handlePieceUp}
-          onPieceCancel={handlePieceCancel}
-        />
+
+        {screen === 'playing' && (
+          <>
+            <div className="game-header">
+              <h1 className="game-title game-title-compact">Woodblock</h1>
+              <div className="game-header-actions">
+                <button
+                  type="button"
+                  className="difficulty-pill"
+                  onClick={handleChangeDifficultyClick}
+                  title="Change difficulty"
+                >
+                  {currentDifficulty.label} {currentDifficulty.size}×{currentDifficulty.size}
+                </button>
+                <button
+                  type="button"
+                  className="restart-icon-btn"
+                  onClick={handleRestartClick}
+                  aria-label="Restart game"
+                  title="Restart game"
+                >
+                  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M20 11A8 8 0 1 0 18.6 16.5" />
+                    <path d="M20 5v6h-6" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+            <ScoreBar score={state.score} best={state.best} />
+            <Board ref={boardRef} board={state.board} preview={preview} flashCells={flashCells} />
+            {state.lastClear && state.lastClear.numLines > 1 && (
+              <div key={state.lastClear.batchId} className="combo-toast">
+                {state.lastClear.numLines}x Combo!
+              </div>
+            )}
+            <PieceTray
+              slots={state.slots}
+              draggingSlotIndex={dragState ? dragState.slotIndex : null}
+              onPieceDown={handlePieceDown}
+              onPieceMove={handlePieceMove}
+              onPieceUp={handlePieceUp}
+              onPieceCancel={handlePieceCancel}
+            />
+          </>
+        )}
       </div>
 
       {dragState && (
@@ -215,20 +263,28 @@ export default function App() {
         </div>
       )}
 
-      {state.gameOver && (
-        <GameOverModal score={state.score} best={state.best} isNewBest={isNewBest} onRestart={newGame} />
-      )}
-
-      {confirmingRestart && (
-        <ConfirmModal
-          title="Restart game?"
-          message="Your current score and board will be lost."
-          confirmLabel="Restart"
-          cancelLabel="Cancel"
-          onConfirm={handleConfirmRestart}
-          onCancel={handleCancelRestart}
+      {screen === 'playing' && state.gameOver && (
+        <GameOverModal
+          score={state.score}
+          best={state.best}
+          isNewBest={isNewBest}
+          onRestart={newGame}
+          onChangeDifficulty={handleGameOverChangeDifficulty}
         />
       )}
+
+      {confirmAction && (
+        <ConfirmModal
+          title={confirmAction === 'restart' ? 'Restart game?' : 'Change difficulty?'}
+          message="Your current score and board will be lost."
+          confirmLabel={confirmAction === 'restart' ? 'Restart' : 'Change'}
+          cancelLabel="Cancel"
+          onConfirm={handleConfirmAction}
+          onCancel={handleCancelAction}
+        />
+      )}
+
+      <footer className="app-footer">Built with Claude Code, co-authored by GA</footer>
     </div>
   )
 }

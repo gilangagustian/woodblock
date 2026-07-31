@@ -1,4 +1,4 @@
-export default function GameOverModal({ score, best, isNewBest, onRestart }) {
+export default function GameOverModal({ score, best, isNewBest, onRestart, onChangeDifficulty }) {
   return (
     <div className="modal-overlay">
       <div className="modal-card">
@@ -8,6 +8,9 @@ export default function GameOverModal({ score, best, isNewBest, onRestart }) {
         <div className="modal-best">Best: {best}</div>
         <button className="restart-btn" onClick={onRestart}>
           Play Again
+        </button>
+        <button type="button" className="text-link-btn" onClick={onChangeDifficulty}>
+          Change difficulty
         </button>
       </div>
     </div>
