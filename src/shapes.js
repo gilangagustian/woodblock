@@ -48,18 +48,10 @@ export const SHAPES = [
   { id: 'penta_Z', cells: [[0, 0], [0, 1], [1, 1], [2, 1], [2, 2]] },
 ]
 
-export const COLORS = [
-  '#c0392b', // barn red
-  '#e07b1a', // amber
-  '#d4ac0d', // mustard gold
-  '#2e7d32', // forest green
-  '#1f6fb2', // slate blue
-  '#7d3fa0', // plum
-  '#00897b', // teal
-  '#a1662f', // saddle wood brown
-  '#c2185b', // berry pink
-  '#546e7a', // slate grey
-]
+// A single tile color for every piece, chosen for strong contrast against
+// the warm brown/tan wood board (a different hue family entirely, so it
+// reads clearly regardless of lighting or color vision).
+export const TILE_COLOR = '#2f7fd1'
 
 export function shapeDims(cells) {
   let maxR = 0

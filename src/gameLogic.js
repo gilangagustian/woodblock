@@ -1,4 +1,4 @@
-import { SHAPES, COLORS, shapeDims } from './shapes.js'
+import { SHAPES, TILE_COLOR, shapeDims } from './shapes.js'
 
 export const POINTS_PER_CELL = 1
 export const LINE_CLEAR_BASE = 10
@@ -21,13 +21,12 @@ function nextPieceId() {
 }
 
 function buildPiece(shape) {
-  const color = COLORS[Math.floor(Math.random() * COLORS.length)]
   const { width, height } = shapeDims(shape.cells)
   return {
     id: nextPieceId(),
     shapeId: shape.id,
     cells: shape.cells,
-    color,
+    color: TILE_COLOR,
     width,
     height,
   }
