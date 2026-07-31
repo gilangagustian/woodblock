@@ -34,13 +34,39 @@ function buildPiece(shape) {
 
 const SINGLE_SHAPE = SHAPES.find((s) => s.id === 'single')
 
+// Draw by cell-count class first (weights below), then uniformly within that
+// class — otherwise pentominoes (16 of the 36 shapes) would dominate the
+// draw at ~44% just because there are more of them defined. This keeps the
+// hand skewed toward smaller, easier-to-place pieces.
+const SIZE_WEIGHTS = { 1: 10, 2: 18, 3: 28, 4: 26, 5: 18 }
+
+const SHAPES_BY_SIZE = SHAPES.reduce((acc, shape) => {
+  const size = shape.cells.length
+  ;(acc[size] ||= []).push(shape)
+  return acc
+}, {})
+
+function weightedRandomShape() {
+  const sizes = Object.keys(SHAPES_BY_SIZE).map(Number)
+  const totalWeight = sizes.reduce((sum, size) => sum + (SIZE_WEIGHTS[size] || 1), 0)
+  let roll = Math.random() * totalWeight
+  for (const size of sizes) {
+    const weight = SIZE_WEIGHTS[size] || 1
+    if (roll < weight) {
+      const group = SHAPES_BY_SIZE[size]
+      return group[Math.floor(Math.random() * group.length)]
+    }
+    roll -= weight
+  }
+  return SHAPES[SHAPES.length - 1]
+}
+
 export function createEmptyBoard(size) {
   return Array.from({ length: size }, () => Array(size).fill(null))
 }
 
 export function randomPiece() {
-  const shape = SHAPES[Math.floor(Math.random() * SHAPES.length)]
-  return buildPiece(shape)
+  return buildPiece(weightedRandomShape())
 }
 
 // A random piece guaranteed to have somewhere to go on `board` right now.

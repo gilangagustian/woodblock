@@ -377,6 +377,48 @@ body {
   100% { opacity: 0; transform: translate(-50%, -70%) scale(1); }
 }
 
+/* ---------- Tray toolbar (reroll) ---------- */
+.tray-toolbar {
+  width: 100%;
+  display: flex;
+  justify-content: flex-end;
+  margin-top: -4px;
+}
+
+.reroll-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 14px;
+  background: linear-gradient(180deg, #e0983e, #b96f1f);
+  color: #2a1a0d;
+  font-weight: 700;
+  font-size: 0.72rem;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  cursor: pointer;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  transition: transform 100ms ease, opacity 150ms ease;
+}
+
+.reroll-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.reroll-btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.reroll-btn:disabled {
+  cursor: default;
+  opacity: 0.45;
+  background: linear-gradient(180deg, #6b5236, #4a3a26);
+  color: rgba(240, 220, 184, 0.7);
+  box-shadow: none;
+}
+
 /* ---------- Piece tray ---------- */
 .piece-tray {
   width: 100%;

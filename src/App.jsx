@@ -10,7 +10,7 @@ import { useGame } from './useGame'
 import { canPlace } from './gameLogic'
 import { DIFFICULTIES, DEFAULT_DIFFICULTY } from './difficulty'
 import { loadBestScores } from './storage'
-import { isSoundEnabled, setSoundEnabled, playPlace, playInvalid, playClear, playStreak, playGameOver } from './feedback'
+import { isSoundEnabled, setSoundEnabled, playPlace, playInvalid, playClear, playStreak, playGameOver, playReroll } from './feedback'
 
 const FLASH_DURATION_MS = 500
 const TOUCH_LIFT_CELLS = 1.6
@@ -43,7 +43,7 @@ function computeGeometry({ clientX, clientY, piece, grabFracX, grabFracY, pointe
 }
 
 export default function App() {
-  const { state, placePiece, clearFlash, newGame, startGame } = useGame(DEFAULT_DIFFICULTY)
+  const { state, placePiece, clearFlash, newGame, startGame, reroll } = useGame(DEFAULT_DIFFICULTY)
   const boardRef = useRef(null)
   const [screen, setScreen] = useState('menu') // 'menu' | 'playing'
   const [dragState, setDragState] = useState(null)
@@ -224,6 +224,13 @@ export default function App() {
     })
   }, [])
 
+  const handleReroll = useCallback(() => {
+    if (state.rerollsRemaining <= 0 || state.gameOver) return
+    clearDrag()
+    reroll()
+    playReroll()
+  }, [state.rerollsRemaining, state.gameOver, reroll, clearDrag])
+
   const preview = dragState && dragState.hoverRow !== null
     ? { row: dragState.hoverRow, col: dragState.hoverCol, cells: dragState.piece.cells, valid: dragState.valid }
     : null
@@ -297,6 +304,23 @@ export default function App() {
                 {state.lastPlacement.streak >= 2 && <div>🔥 Streak ×{state.lastPlacement.streak}</div>}
               </div>
             )}
+            <div className="tray-toolbar">
+              <button
+                type="button"
+                className="reroll-btn"
+                onClick={handleReroll}
+                disabled={state.rerollsRemaining <= 0}
+                title={state.rerollsRemaining > 0 ? `Reroll pieces (${state.rerollsRemaining} left)` : 'No rerolls left'}
+              >
+                <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M17 3l4 4-4 4" />
+                  <path d="M3 11V9a4 4 0 0 1 4-4h14" />
+                  <path d="M7 21l-4-4 4-4" />
+                  <path d="M21 13v2a4 4 0 0 1-4 4H3" />
+                </svg>
+                Reroll · {state.rerollsRemaining}
+              </button>
+            </div>
             <PieceTray
               slots={state.slots}
               draggingSlotIndex={dragState ? dragState.slotIndex : null}

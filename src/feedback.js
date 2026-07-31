@@ -83,6 +83,13 @@ export function playStreak(streak) {
   vibrate([20, 40, 20, 40, Math.min(20 + streak * 4, 60)])
 }
 
+export function playReroll() {
+  if (!enabled) return
+  tone({ freq: 440, duration: 0.08, type: 'triangle', volume: 0.1, glideTo: 330 })
+  tone({ freq: 550, start: 0.05, duration: 0.08, type: 'triangle', volume: 0.1, glideTo: 660 })
+  vibrate([12, 20, 12])
+}
+
 export function playGameOver() {
   if (!enabled) return
   tone({ freq: 392, duration: 0.18, type: 'sawtooth', volume: 0.14 })

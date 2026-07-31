@@ -14,6 +14,8 @@ import {
 import { DIFFICULTIES, DEFAULT_DIFFICULTY } from './difficulty'
 import { loadBestScores, saveBestScore } from './storage'
 
+export const MAX_REROLLS = 3
+
 function makeInitialState(difficultyKey) {
   const size = DIFFICULTIES[difficultyKey].size
   const bestScores = loadBestScores()
@@ -25,6 +27,7 @@ function makeInitialState(difficultyKey) {
     score: 0,
     best: bestScores[difficultyKey] || 0,
     streak: 0, // consecutive placements that cleared at least one line
+    rerollsRemaining: MAX_REROLLS,
     gameOver: false,
     lastClear: null, // { clearedCells, numLines, batchId } for flash animation, transient
     lastPlacement: null, // { batchId, cellsPlaced, numLines, streak } — one-shot event for sound/haptics/toast
@@ -70,6 +73,12 @@ function reducer(state, action) {
 
       return { ...state, board, slots, score, best, streak, gameOver, lastClear, lastPlacement }
     }
+    case 'REROLL': {
+      if (state.gameOver || state.rerollsRemaining <= 0) return state
+      const slots = generatePlayableThreePieces(state.board)
+      const gameOver = isGameOver(state.board, slots)
+      return { ...state, slots, rerollsRemaining: state.rerollsRemaining - 1, gameOver }
+    }
     case 'CLEAR_FLASH': {
       if (state.lastClear && state.lastClear.batchId === action.batchId) {
         return { ...state, lastClear: null }
@@ -111,5 +120,9 @@ export function useGame(initialDifficultyKey = DEFAULT_DIFFICULTY) {
     dispatch({ type: 'START_GAME', difficultyKey })
   }, [])
 
-  return { state, placePiece, clearFlash, newGame, startGame }
+  const reroll = useCallback(() => {
+    dispatch({ type: 'REROLL' })
+  }, [])
+
+  return { state, placePiece, clearFlash, newGame, startGame, reroll }
 }
