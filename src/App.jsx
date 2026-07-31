@@ -60,6 +60,18 @@ export default function App() {
     return () => clearTimeout(t)
   }, [state.lastClear, clearFlash])
 
+  // Belt-and-suspenders: block native touch scrolling for the duration of a
+  // piece drag. CSS touch-action on the piece element normally covers this,
+  // but iOS Safari can still let a touchmove scroll/rubber-band the page if
+  // it slips through before pointer capture takes effect.
+  useEffect(() => {
+    const blockScrollDuringDrag = (e) => {
+      if (dragStateRef.current) e.preventDefault()
+    }
+    window.addEventListener('touchmove', blockScrollDuringDrag, { passive: false })
+    return () => window.removeEventListener('touchmove', blockScrollDuringDrag)
+  }, [])
+
   const handlePieceDown = useCallback((e, slotIndex, piece) => {
     if (state.gameOver) return
     e.preventDefault()
