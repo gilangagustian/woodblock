@@ -1,5 +1,5 @@
 import { forwardRef, memo } from 'react'
-import { findAlmostFullGaps, fillRatio } from '../gameLogic'
+import { fillRatio } from '../gameLogic'
 
 const PARTICLES_PER_CELL = 4
 // Wood chips + a couple of tile-colored shards, so a clear reads as the
@@ -69,7 +69,6 @@ const Board = memo(forwardRef(function Board({ board, preview, flashCells, shake
     flashMap.set(`${f.r},${f.c}`, f)
   }
 
-  const gapKeys = findAlmostFullGaps(board)
   const danger = Math.min(Math.max((fillRatio(board) - 0.65) / 0.25, 0), 1)
 
   const cells = []
@@ -85,9 +84,6 @@ const Board = memo(forwardRef(function Board({ board, preview, flashCells, shake
       if (filled) classes.push('cell-filled')
       if (previewState === true) classes.push('cell-preview-valid')
       if (previewState === false) classes.push('cell-preview-invalid')
-      // Only telegraph the gap while it's actually open — not while the
-      // player is already previewing a piece into it.
-      if (!filled && previewState === undefined && gapKeys.has(key)) classes.push('cell-gap')
 
       cells.push(
         <div
