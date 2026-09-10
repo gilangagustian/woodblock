@@ -12,7 +12,10 @@ import { DIFFICULTIES, DEFAULT_DIFFICULTY } from './difficulty'
 import { loadBestScores } from './storage'
 import { isSoundEnabled, setSoundEnabled, playPlace, playInvalid, playClear, playStreak, playGameOver, playReroll } from './feedback'
 
-const FLASH_DURATION_MS = 500
+// Long enough for the flash *and* the wood-chip particles to finish flying
+// before the cleared cells are dropped from state.
+const FLASH_DURATION_MS = 700
+const SHAKE_DURATION_MS = 350
 const TOUCH_LIFT_CELLS = 1.6
 
 function computeGeometry({ clientX, clientY, piece, grabFracX, grabFracY, pointerType, boardRect, boardSize, board }) {
@@ -50,6 +53,7 @@ export default function App() {
   const [dragState, setDragState] = useState(null)
   const [confirmAction, setConfirmAction] = useState(null) // null | 'restart' | 'menu'
   const [soundOn, setSoundOn] = useState(() => isSoundEnabled())
+  const [shakeLevel, setShakeLevel] = useState(0) // 0 = none, 1-3 = intensity
   const prevGameOverRef = useRef(false)
   // Authoritative drag state, written synchronously inside each handler so a
   // pointerup that fires immediately after a pointermove (fast flicks, or
@@ -81,6 +85,14 @@ export default function App() {
     } else {
       playPlace()
     }
+  }, [state.lastPlacement])
+
+  // Screen shake on a clear, scaled by how big the clear was.
+  useEffect(() => {
+    if (!state.lastPlacement || state.lastPlacement.numLines === 0) return
+    setShakeLevel(Math.min(state.lastPlacement.numLines, 3))
+    const t = setTimeout(() => setShakeLevel(0), SHAKE_DURATION_MS)
+    return () => clearTimeout(t)
   }, [state.lastPlacement])
 
   useEffect(() => {
@@ -323,7 +335,13 @@ export default function App() {
               </div>
             </div>
             <ScoreBar score={state.score} best={state.best} />
-            <Board ref={boardRef} board={state.board} preview={preview} flashCells={flashCells} />
+            <Board
+              ref={boardRef}
+              board={state.board}
+              preview={preview}
+              flashCells={flashCells}
+              shakeLevel={shakeLevel}
+            />
             {state.lastPlacement && (state.lastPlacement.numLines > 1 || state.lastPlacement.streak >= 2) && (
               <div key={state.lastPlacement.batchId} className="combo-toast">
                 {state.lastPlacement.numLines > 1 && <div>{state.lastPlacement.numLines}x Lines!</div>}

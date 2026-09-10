@@ -217,6 +217,52 @@ export function isGameOver(board, slots) {
   return !activePieces.some((piece) => canPieceFitAnywhere(board, piece.cells))
 }
 
+// The single empty cell of any row/column that is one placement away from
+// clearing, so the UI can telegraph near-misses. Returns "r,c" keys.
+export function findAlmostFullGaps(board) {
+  const size = board.length
+  const gaps = new Set()
+
+  for (let r = 0; r < size; r++) {
+    let emptyCount = 0
+    let gapCol = -1
+    for (let c = 0; c < size; c++) {
+      if (board[r][c] === null) {
+        emptyCount += 1
+        if (emptyCount > 1) break
+        gapCol = c
+      }
+    }
+    if (emptyCount === 1) gaps.add(`${r},${gapCol}`)
+  }
+
+  for (let c = 0; c < size; c++) {
+    let emptyCount = 0
+    let gapRow = -1
+    for (let r = 0; r < size; r++) {
+      if (board[r][c] === null) {
+        emptyCount += 1
+        if (emptyCount > 1) break
+        gapRow = r
+      }
+    }
+    if (emptyCount === 1) gaps.add(`${gapRow},${c}`)
+  }
+
+  return gaps
+}
+
+export function fillRatio(board) {
+  const size = board.length
+  let filled = 0
+  for (let r = 0; r < size; r++) {
+    for (let c = 0; c < size; c++) {
+      if (board[r][c] !== null) filled += 1
+    }
+  }
+  return filled / (size * size)
+}
+
 export function computeLineClearScore(numLines) {
   if (numLines === 0) return 0
   return LINE_CLEAR_BASE * numLines * numLines
