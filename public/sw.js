@@ -1,4 +1,4 @@
-const CACHE_NAME = 'woodblock-v2'
+const CACHE_NAME = 'woodblock-v3'
 // The page this SW controls (e.g. https://host/woodblock/) — also the app's
 // single navigable URL, since it's a client-only SPA with no routing.
 const SCOPE_URL = self.registration.scope
@@ -57,6 +57,10 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return
+  // Leave cross-origin requests (Google Analytics, etc.) alone entirely —
+  // don't cache or interfere with them, just let the browser handle them
+  // normally.
+  if (new URL(event.request.url).origin !== self.location.origin) return
 
   // Navigation requests (opening/reloading the app) always fall back to the
   // precached shell document, regardless of the exact request URL — this is
