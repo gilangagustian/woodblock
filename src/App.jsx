@@ -10,6 +10,7 @@ import { useGame } from './useGame'
 import { canPlace } from './gameLogic'
 import { DIFFICULTIES, DEFAULT_DIFFICULTY } from './difficulty'
 import { loadBestScores } from './storage'
+import { openConsentSettings } from './consent'
 import { isSoundEnabled, setSoundEnabled, playPlace, playInvalid, playClear, playStreak, playGameOver, playReroll } from './feedback'
 
 // Long enough for the flash *and* the wood-chip particles to finish flying
@@ -418,7 +419,14 @@ export default function App() {
         />
       )}
 
-      <footer className="app-footer">Built with Claude Code, co-authored by GA</footer>
+      <footer className="app-footer">
+        <span>Built with Claude Code, co-authored by GA</span>
+        <span className="app-footer-links">
+          <a href="https://ideathatworks.de/impressum.html">Impressum</a>
+          <a href="https://ideathatworks.de/datenschutz.html">Datenschutz</a>
+          <button type="button" onClick={openConsentSettings}>Cookie settings</button>
+        </span>
+      </footer>
     </div>
   )
 }

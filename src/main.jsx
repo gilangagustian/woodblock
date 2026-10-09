@@ -2,7 +2,7 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App.jsx'
 import './styles.css'
-import { initAnalytics } from './analytics.js'
+import { initConsent } from './consent.js'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
@@ -11,7 +11,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
 )
 
 if (import.meta.env.PROD) {
-  initAnalytics()
+  initConsent()
 
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
